@@ -16,7 +16,7 @@ This script enhances the workflow for medical imaging professionals by providing
 
 ## Mouse Gestures
 
-The script recognizes various mouse gestures, which are generally designed to resemble the first letter of their intended action. For example:
+The script recognizes various mouse gestures, which are generally designed to resemble the first letter of their intended action. Gesturing is activated with a middle mouse click and mouse manipulation. For example:
 
 - "u" (up) for "Previous Protocol"
 - "d" (down) for "Next Protocol"

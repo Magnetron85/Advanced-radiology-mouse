@@ -45,7 +45,7 @@ Region of Interest (ROI) gestures are designed to be intuitive and quick to perf
 
 ## Hardware Compatibility
 
-This script has been tested and optimized for use with a Corsair M55 mouse. While it may work with other mice, your mileage may vary. The script utilizes the following mouse inputs:
+This script has been tested and optimized for use with a Corsair M55 mouse. While it should work with other mice, your mileage may vary (for example my wireless Logitech M310 does not recognize middle clicks and gestures). The script utilizes the following mouse inputs:
 
 - Left click
 - Right click

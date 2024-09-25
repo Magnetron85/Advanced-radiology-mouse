@@ -3,6 +3,32 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
+; Define gestures array
+gestures := [ { gesture: "u", hotkey: "{Left}", humanName: "Previous Protocol" }
+             ,{ gesture: "d", hotkey: "{Right}", humanName: "Next Protocol" }
+             ,{ gesture: "l", hotkey: "{PgUp}", humanName: "Previous Series" }
+             ,{ gesture: "r", hotkey: "{PgDn}", humanName: "Next Series" }
+             ,{ gesture: "ul", hotkey: "y", humanName: "Measure" }
+             ,{ gesture: "ur", hotkey: "^a", humanName: "Arrow" }
+             ,{ gesture: "ru", hotkey: "y", humanName: "Measure" }
+             ,{ gesture: "lu", hotkey: "^a", humanName: "Arrow" }
+             ,{ gesture: "rd", hotkey: "[", humanName: "Next Prior" }
+             ,{ gesture: "dr", hotkey: "[", humanName: "Next Prior" }
+             ,{ gesture: "ld", hotkey: "]", humanName: "Previous Prior" }
+             ,{ gesture: "dl", hotkey: "]", humanName: "Previous Prior" }
+             ,{ gesture: "lr", hotkey: ["^y", "+q"], humanName: "Erase Measurements and Annotations" }
+             ,{ gesture: "rl", hotkey: ["^y", "+q"], humanName: "Erase Measurements and Annotations" }
+             ,{ gesture: "ud", hotkey: "s", humanName: "Scroll" }
+             ,{ gesture: "du", hotkey: "s", humanName: "Scroll" }
+             ,{ gesture: "rdld", hotkey: "j", humanName: "ROI" }
+             ,{ gesture: "rld", hotkey: "^t", humanName: "Text" } 
+             ,{ gesture: "udr", hotkey: "{F5}", humanName: "Lung Window" }
+             ,{ gesture: "urdlrdl", hotkey: "{F7}", humanName: "Bone Window" }
+             ,{ gesture: "uldrdl", hotkey: "{F4}", humanName: "Soft Tissue Window" } 
+             ,{ gesture: "udu", hotkey: "{F6}", humanName: "Liver Window" }
+             ,{ gesture: "ldru", hotkey: "^{Backspace}", humanName: "Reset Viewer" }
+             ,{ gesture: "rdlu", hotkey: "^{Backspace}", humanName: "Reset Viewer" } ]
+
 ; Initialize variables
 rightClickCounter := 0
 fKeys := ["F4", "F5", "F6", "F7"]  ; Cycle through F4, F5, F6, F7
@@ -24,25 +50,37 @@ yKeyPressed := false
 Gui, -AlwaysOnTop +Resize
 Gui, Font, s10, Arial  ; Set a larger, more readable font
 
-; Add Gesture Reminders
-Gui, Add, Text, vGestureReminder,
-(
-Gesture Reminders:
-Text: 			UL (Up-Left)
-Arrow: 			UR (Up-Right)   
-Measure:		L  (Left)    
-ROI:			R  (Right)     
-Scroll:			UD (Up-Down) or DU (Down-Up)
-Prior Nav:		DL (Down-Left) and DR (Down-Right)
-Delete meas/ann:	LR (Left-Right) or RL (Right-Left)
-)
+; Add Tab control
+Gui, Add, Tab3, vMainTab w800 h600, Gesture Reminders|Event Log
 
-; Add Event Log
-Gui, Add, Text, y+20, Event Log:
-Gui, Add, Edit, vEventText w400 h250 ReadOnly
+; Gesture Reminders Tab
+Gui, Tab, 1
+Gui, Add, ListView, r18 w580 vGestureList, Gesture|Hotkey|Action
 
-; Show GUI
-Gui, Show, w420 h400, Corsair M55 Mouse Action Tracker
+; Populate the ListView with gesture information
+for index, item in gestures {
+    hotkey := IsObject(item.hotkey) ? item.hotkey[1] . " + " . item.hotkey[2] : item.hotkey
+    LV_Add("", item.gesture, hotkey, item.humanName)
+}
+
+; Auto-size columns based on content
+LV_ModifyCol(1, "AutoHdr")  ; Gesture column
+LV_ModifyCol(2, "AutoHdr")  ; Hotkey column
+LV_ModifyCol(3, "AutoHdr")  ; Action column
+
+; Event Log Tab
+Gui, Tab, 2
+Gui, Add, Edit, vEventText w780 h570 ReadOnly
+
+; Calculate the required width and height
+Gui, +LastFound
+GuiControlGet, TabControl, Pos, MainTab
+GuiControlGet, ListView, Pos, GestureList
+totalWidth := ListViewW + 40  ; Add some padding
+totalHeight := TabControlH + 40  ; Add some padding for the tab control
+
+; Show GUI with calculated dimensions
+Gui, Show, w%totalWidth% h%totalHeight%, Corsair M55 Mouse Action Tracker
 
 ; Function to update GUI
 UpdateGui(action) {
@@ -182,21 +220,27 @@ return
 ; Middle click handling (for gestures)
 MButton::
     UpdateGui("Middle Click detected, starting gesture recognition")
-    GetMouseGesture(True)
+    result := GetMouseGesture(True)
     While GetKeyState("MButton", "P") {
-        ToolTip % MG := GetMouseGesture()
+        result := GetMouseGesture()
+        ToolTip % result.gesture . (result.humanName ? " - " . result.humanName : "") . " (" . Round(result.similarity * 100) . "% match)"
         Sleep 150
     }
     ToolTip  ; Clear the tooltip
     
-    if (IsFunc(MG)) {
-        %MG%()
-        UpdateGui("Action: Gesture " . MG . " recognized and executed")
+    if (result.hotkey) {
+        if (IsObject(result.hotkey)) {
+            for index, key in result.hotkey {
+                Send % key
+            }
+        } else {
+            Send % result.hotkey
+        }
+        UpdateGui("Action: Gesture " . result.gesture . " recognized and executed (" . result.humanName . ") with " . Round(result.similarity * 100) . "% similarity")
     }
     else
     {
-        UpdateGui("No gesture recognized")
-        ; Send {MButton}
+        UpdateGui("No gesture recognized (Best match: " . Round(result.similarity * 100) . "% similarity)")
     }
 return
 
@@ -205,78 +249,25 @@ return
 ~WheelDown::UpdateGui("Wheel Down detected")
 
 ; Hotkey to clear the log
-^c::  ; Ctrl+C to clear
+^+c::  ; Ctrl+Shift+C to clear
 GuiControl,, EventText, Log Cleared
 return
 
 ; Hotkey to exit script
-Esc::ExitApp
+^Esc::ExitApp
 
 GuiClose:
 ExitApp
 
-; Mouse gesture functions
-R() {
-    Send, {j}
-    UpdateGui("Action: J key sent (Right gesture)")
-}
-
-L() {
-    Send, {y}
-    UpdateGui("Action: Y key sent (Left gesture)")
-}
-
-UD() {
-    Send, {s}
-    UpdateGui("Action: S key sent (Up-Down gesture)")
-}
-
-DU() {
-    Send, {s}
-    UpdateGui("Action: S key sent (Down-Up gesture)")
-}
-
-DL() {
-    Send, {]}
-    UpdateGui("Action: } key sent (Down-Left gesture)")
-}
-
-UR() {
-    Send, ^a  ; This sends Ctrl+A
-    UpdateGui("Action: Ctrl+A sent (Up-Right gesture)")
-}
-
-
-UL() {
-    Send, ^t  ; This sends Ctrl+T
-    UpdateGui("Action: Ctrl+T sent (Up-Right gesture)")
-}
-
-LR() {
-    Send, ^y  ; This sends Ctrl+A
-	Send, +q  ; This sends Ctrl+Q
-    UpdateGui("Action: Ctrl+Y and Shift+Q sent (Left-Right gesture)")
-}
-
-RL() {
-    Send, ^y  ; This sends Ctrl+A
-	Send, +q  ; This sends Ctrl+Q
-    UpdateGui("Action: Ctrl+Y and Shift+Q sent (Left-Right gesture)")
-}
-
-DR() {
-    Send, {[}  
-    UpdateGui("Action: { sent (Left-Right gesture)")
-}
-
 ; GetMouseGesture function
 GetMouseGesture(reset := false) {
-    Static xpos1, ypos1, xpos2, ypos2, gesture
+    Static xpos1, ypos1, xpos2, ypos2, currentGesture
+    global gestures
     MouseGetPos, xpos2, ypos2
     if (reset) {
         xpos1 := xpos2, ypos1 := ypos2
-        gesture := ""
-        Return gesture
+        currentGesture := ""
+        Return {gesture: currentGesture, hotkey: "", humanName: ""}
     }
     dx := xpos2 - xpos1, dy := ypos1 - ypos2
     if (abs(dy) >= abs(dx))
@@ -286,9 +277,49 @@ GetMouseGesture(reset := false) {
     if (abs(dy) < 10 and abs(dx) < 10)
         track := ""
     xpos1 := xpos2, ypos1 := ypos2
-    if (track != SubStr(gesture, 0, 1))
-        gesture .= track
-    Return gesture
+    if (track != SubStr(currentGesture, 0, 1))
+        currentGesture .= track
+    
+    return EvaluateGesture(currentGesture)
+}
+
+; Function to evaluate gestures
+EvaluateGesture(currentGesture) {
+    global gestures
+    bestMatch := ""
+    bestMatchScore := 0
+    gestureLength := StrLen(currentGesture)
+
+    for index, item in gestures {
+        similarity := CalculateSimilarity(currentGesture, item.gesture)
+        if (similarity > bestMatchScore) {
+            bestMatch := item
+            bestMatchScore := similarity
+        }
+    }
+
+    ; Define a threshold for gesture recognition (e.g., 0.7 or 70% similarity)
+    if (bestMatchScore >= 0.7) {
+        return {gesture: bestMatch.gesture, hotkey: bestMatch.hotkey, humanName: bestMatch.humanName, similarity: bestMatchScore}
+    } else {
+        return {gesture: currentGesture, hotkey: "", humanName: "", similarity: bestMatchScore}
+    }
+}
+
+; Function to calculate similarity between two gestures
+CalculateSimilarity(gesture1, gesture2) {
+    len1 := StrLen(gesture1)
+    len2 := StrLen(gesture2)
+    maxLen := Max(len1, len2)
+    
+    if (maxLen == 0)
+        return 1.0  ; Both strings are empty
+    
+    commonPrefix := 0
+    while (commonPrefix < len1 && commonPrefix < len2 && SubStr(gesture1, commonPrefix+1, 1) == SubStr(gesture2, commonPrefix+1, 1))
+        commonPrefix++
+    
+    return commonPrefix / maxLen
 }
 
 ; Function to toggle Y key press

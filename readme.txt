@@ -29,7 +29,7 @@ The liver window gesture is an exception, using a "V"-like motion ("udu") instea
 
 Region of Interest (ROI) gestures are designed to be intuitive and quick to perform:
 
-- "rdld" for ROI: This gesture forms a rough square shape, mimicking the act of drawing an ROI
+- "rdld" for ROI: This gesture forms a rough R shape, mimicking the act of drawing an ROI
 - "udr" for Lung Window: Resembles an "L" shape
 - "urdlrdl" for Bone Window: Forms a "B" shape
 - "uldrdl" for Soft Tissue Window: Approximates an "S" shape

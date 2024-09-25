@@ -290,10 +290,10 @@ EvaluateGesture(currentGesture) {
     bestMatchScore := 0
     gestureLength := StrLen(currentGesture)
 
-    for index, item in gestures {
-        similarity := CalculateSimilarity(currentGesture, item.gesture)
+    for gestureIndex, gestureItem in gestures {
+        similarity := CalculateSimilarity(currentGesture, gestureItem.gesture)
         if (similarity > bestMatchScore) {
-            bestMatch := item
+            bestMatch := gestureItem
             bestMatchScore := similarity
         }
     }

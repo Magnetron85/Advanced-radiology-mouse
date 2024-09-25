@@ -23,7 +23,7 @@ The script recognizes various mouse gestures, which are generally designed to re
 - "l" (left) for "Previous Series"
 - "r" (right) for "Next Series"
 
-The liver window gesture is an exception, using a "V"-like motion ("udu") instead.
+The liver window gesture is an exception, using a "V"-like motion ("udu") instead. Note: starts with an up motion as it is a windowlevel action
 
 ### ROI Gestures
 

@@ -29,7 +29,7 @@ The liver window gesture is an exception, using a "V"-like motion ("udu") instea
 
 Gestures are designed to be intuitive and quick to perform. Window/Level gestures always starts with an up:
 
-- "rdld" for ROI: This gesture forms a rough R shape, mimicking the act of drawing an ROI
+- "rdld" for ROI: This gesture forms a rough / incomplete R shape, mimicking the act of drawing an ROI
 - "udr" for Lung Window: Resembles an "L" shape
 - "urdlrdl" for Bone Window: Forms a "B" shape
 - "uldrdl" for Soft Tissue Window: Approximates an "S" shape

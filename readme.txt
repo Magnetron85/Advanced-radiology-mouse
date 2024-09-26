@@ -15,6 +15,7 @@ This script enhances the workflow for medical imaging professionals by providing
 - Customizable gestures and actions
 
 ## Mouse Gestures
+Inspired and iterates on a solution provided by AHK user Cyl0n (https://www.autohotkey.com/boards/viewtopic.php?t=57037)
 
 The script recognizes various mouse gestures, which are generally designed to resemble the first letter of their intended action. Gesturing is activated with a middle mouse click and mouse manipulation. For example:
 

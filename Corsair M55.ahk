@@ -4,14 +4,14 @@ SendMode Input  ; Recommended for new scripts due to its superior speed and reli
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
 ; Define gestures array
-gestures := [ { gesture: "u", hotkey: "{Left}", humanName: "Previous Protocol" }
-             ,{ gesture: "d", hotkey: "{Right}", humanName: "Next Protocol" }
+gestures := [ { gesture: "d", hotkey: "{Left}", humanName: "Previous Protocol" }
+             ,{ gesture: "u", hotkey: "{Right}", humanName: "Next Protocol" }
              ,{ gesture: "l", hotkey: "{PgUp}", humanName: "Previous Series" }
              ,{ gesture: "r", hotkey: "{PgDn}", humanName: "Next Series" }
              ,{ gesture: "ul", hotkey: "y", humanName: "Measure" }
              ,{ gesture: "ur", hotkey: "^a", humanName: "Arrow" }
-             ,{ gesture: "ru", hotkey: "y", humanName: "Measure" }
-             ,{ gesture: "lu", hotkey: "^a", humanName: "Arrow" }
+             ,{ gesture: "lu", hotkey: "y", humanName: "Measure" }
+             ,{ gesture: "ru", hotkey: "^a", humanName: "Arrow" }
              ,{ gesture: "rd", hotkey: "[", humanName: "Next Prior" }
              ,{ gesture: "dr", hotkey: "[", humanName: "Next Prior" }
              ,{ gesture: "ld", hotkey: "]", humanName: "Previous Prior" }
@@ -21,21 +21,25 @@ gestures := [ { gesture: "u", hotkey: "{Left}", humanName: "Previous Protocol" }
              ,{ gesture: "ud", hotkey: "s", humanName: "Scroll" }
              ,{ gesture: "du", hotkey: "s", humanName: "Scroll" }
              ,{ gesture: "rdld", hotkey: "j", humanName: "ROI" }
-             ,{ gesture: "rld", hotkey: "^t", humanName: "Text" } 
+             ,{ gesture: "rld", hotkey: "^t", humanName: "Text" }
              ,{ gesture: "udr", hotkey: "{F5}", humanName: "Lung Window" }
-             ,{ gesture: "urdlrdl", hotkey: "{F7}", humanName: "Bone Window" }
-             ,{ gesture: "uldrdl", hotkey: "{F4}", humanName: "Soft Tissue Window" } 
-             ,{ gesture: "udu", hotkey: "{F6}", humanName: "Liver Window" }
+			 ,{ gesture: "udu", hotkey: "{F6}", humanName: "Liver Window" }
+             ,{ gesture: "uld", hotkey: "ZoomMeasureReset", humanName: "Zoom, Measure, Reset" }  ; New gesture
+             ,{ gesture: "uru", hotkey: "{F7}", humanName: "Bone Window" }  ; New shorter gesture for Bone Window
+             ,{ gesture: "drd", hotkey: "{F4}", humanName: "Soft Tissue Window" }  ; New shorter gesture for Soft Tissue Window
              ,{ gesture: "ldru", hotkey: "^{Backspace}", humanName: "Reset Viewer" }
-             ,{ gesture: "rdlu", hotkey: "^{Backspace}", humanName: "Reset Viewer" } ]
+             ,{ gesture: "rdlu", hotkey: "^{Backspace}", humanName: "Reset Viewer" }
+             ,{ gesture: "rlr", hotkey: "z", humanName: "Zoom" }
+             ,{ gesture: "rdr", hotkey: "z", humanName: "Zoom" } ]
 
 ; Initialize variables
 rightClickCounter := 0
-fKeys := ["F4", "F5", "F6", "F7"]  ; Cycle through F4, F5, F6, F7
 clickTimeframe := 250  ; Time in milliseconds to wait for a potential double-click
 longClickThreshold := 500  ; Time in milliseconds to consider a click as a long click
+fKeys := ["F4", "F5", "F6", "F7"]  ; Cycle through F4, F5, F6, F7
 lastRightClickTime := 0
 waitingForSecondRightClick := false
+global resetPressed := false
 
 ; XButton variables
 lastXButton1ClickTime := 0
@@ -85,10 +89,12 @@ Gui, Show, w%totalWidth% h%totalHeight%, Corsair M55 Mouse Action Tracker
 ; Function to update GUI
 UpdateGui(action) {
     global EventText
+    currentText := ""  ; Initialize to empty string
     GuiControlGet, currentText,, EventText
     newText := action . "`n" . currentText
     GuiControl,, EventText, %newText%
 }
+
 
 ; XButton1 handling
 XButton1::
@@ -100,8 +106,8 @@ XButton1::
     {
         ; Double-click detected
         waitingForSecondXButton1 := false
-        Send, {PgUp}
-        UpdateGui("Action: Page Up sent (XButton1 double-click)")
+        Send, {F6}  ; Liver Window
+        UpdateGui("Action: Liver Window (XButton1 double-click)")
     }
     else
     {
@@ -115,8 +121,8 @@ XButton1SingleClickAction:
     if (waitingForSecondXButton1)
     {
         waitingForSecondXButton1 := false
-        Send, {Left}
-        UpdateGui("Action: Left Arrow sent (XButton1 single click)")
+        Send, {F4}  ; Soft Tissue Window
+        UpdateGui("Action: Soft Tissue Window (XButton1 single click)")
     }
 return
 
@@ -130,8 +136,8 @@ XButton2::
     {
         ; Double-click detected
         waitingForSecondXButton2 := false
-        Send, {PgDn}
-        UpdateGui("Action: Page Down sent (XButton2 double-click)")
+        Send, {F7}  ; Bone Window
+        UpdateGui("Action: Bone Window (XButton2 double-click)")
     }
     else
     {
@@ -145,8 +151,8 @@ XButton2SingleClickAction:
     if (waitingForSecondXButton2)
     {
         waitingForSecondXButton2 := false
-        Send, {Right}
-        UpdateGui("Action: Right Arrow sent (XButton2 single click)")
+        Send, {F5}  ; Lung Window
+        UpdateGui("Action: Lung Window (XButton2 single click)")
     }
 return
 
@@ -219,6 +225,7 @@ return
 
 ; Middle click handling (for gestures)
 MButton::
+    PerformOrientationClick()
     UpdateGui("Middle Click detected, starting gesture recognition")
     result := GetMouseGesture(True)
     While GetKeyState("MButton", "P") {
@@ -229,7 +236,9 @@ MButton::
     ToolTip  ; Clear the tooltip
     
     if (result.hotkey) {
-        if (IsObject(result.hotkey)) {
+        if (result.hotkey == "ZoomMeasureReset") {
+            PerformZoomMeasureReset()
+        } else if (IsObject(result.hotkey)) {
             for index, key in result.hotkey {
                 Send % key
             }
@@ -242,6 +251,89 @@ MButton::
     {
         UpdateGui("No gesture recognized (Best match: " . Round(result.similarity * 100) . "% similarity)")
     }
+return
+
+; Improved function for Zoom, Measure, Reset routine with multi-screen support
+PerformZoomMeasureReset() {
+    Send, z  ; Activate zoom
+    UpdateGui("Action: Zoom activated")
+    KeyWait, LButton, D  ; Wait for left mouse button to be pressed
+    KeyWait, LButton  ; Wait for left mouse button to be released
+    Send, y  ; Activate measure
+    UpdateGui("Action: Measure activated")
+    KeyWait, LButton, D  ; Wait for left mouse button to be pressed
+    KeyWait, LButton  ; Wait for left mouse button to be released
+
+    ; Create a new GUI for the reset prompt
+    Gui, ResetPrompt:New, +AlwaysOnTop +ToolWindow
+
+    ; Get current mouse position and monitor info
+    MouseGetPos, mouseX, mouseY, windowUnderMouse, controlUnderMouse, 2
+    SysGet, monitorCount, MonitorCount
+    SysGet, primaryMonitor, MonitorPrimary
+
+    ; Find which monitor the mouse is on
+    Loop, %monitorCount%
+    {
+        SysGet, monArea, Monitor, %A_Index%
+        if (mouseX >= monAreaLeft && mouseX < monAreaRight && mouseY >= monAreaTop && mouseY < monAreaBottom)
+        {
+            currentMonitor := A_Index
+            break
+        }
+    }
+
+    ; Calculate GUI position
+    guiW := 220  ; Estimated width of the GUI
+    guiH := 100  ; Estimated height of the GUI
+    guiX := (mouseX + guiW > monAreaRight) ? monAreaRight - guiW : mouseX
+    guiY := (mouseY + guiH > monAreaBottom) ? monAreaBottom - guiH : mouseY
+
+    ; Add controls to the GUI
+    Gui, ResetPrompt:Add, Text,, Press Reset when ready:
+    Gui, ResetPrompt:Add, Button, gResetViewerAction w100, Reset Viewer
+    Gui, ResetPrompt:Add, Button, gCancelReset w100, Cancel
+
+    ; Show the GUI near the mouse cursor
+    Gui, ResetPrompt:Show, x%guiX% y%guiY% NoActivate, Reset Viewer
+    UpdateGui("Action: Reset prompt displayed")
+
+    ; Make the GUI movable
+    WinSet, Style, +0x80000, Reset Viewer
+
+    ; Wait for user action while allowing other functions to run
+    SetTimer, CheckResetPrompt, 100
+    return
+
+ResetViewerAction:
+    Gui, ResetPrompt:Destroy
+    SetTimer, CheckResetPrompt, Off
+    Send, ^{Backspace}  ; Reset viewer
+    UpdateGui("Action: Viewer reset (Reset button pressed)")
+    return
+
+CancelReset:
+    Gui, ResetPrompt:Destroy
+    SetTimer, CheckResetPrompt, Off
+    UpdateGui("Action: Reset cancelled (Cancel button pressed)")
+    return
+
+CheckResetPrompt:
+    if (!WinExist("Reset Viewer"))
+    {
+        SetTimer, CheckResetPrompt, Off
+        if (!A_GuiEvent)  ; If GUI was closed without pressing a button
+            UpdateGui("Action: Reset prompt closed (Window closed)")
+    }
+    return
+}
+
+; Ensure this is added to handle GUI closure
+ResetPromptGuiClose:
+ResetPromptGuiEscape:
+    Gui, ResetPrompt:Destroy
+    SetTimer, CheckResetPrompt, Off
+    UpdateGui("Action: Reset prompt closed (Window closed or Esc pressed)")
 return
 
 ; Additional mouse button logging for troubleshooting
@@ -274,7 +366,7 @@ GetMouseGesture(reset := false) {
         track := dy > 0 ? "u" : "d"
     else
         track := dx > 0 ? "r" : "l"
-    if (abs(dy) < 10 and abs(dx) < 10)
+    if (abs(dy) < 6 and abs(dx) < 6)
         track := ""
     xpos1 := xpos2, ypos1 := ypos2
     if (track != SubStr(currentGesture, 0, 1))
@@ -334,4 +426,10 @@ ToggleYKey() {
         UpdateGui("Action: Y key pressed (simultaneous left and right click)")
         yKeyPressed := true
     }
+}
+
+; Perform orientation click
+PerformOrientationClick() {
+    Click
+    Sleep, 50  ; Short delay to ensure the click is registered
 }
